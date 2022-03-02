@@ -1,6 +1,9 @@
 require 'faraday'
 require 'faraday/net_http'
 
+# Usage: ruby main.rb
+# TWITTER_API_BEARER_TOKEN must be set in the environment
+
 conn = Faraday.new(
   url: 'https://api.twitter.com/2',
   headers: {'Authorization' => "Bearer #{ENV['TWITTER_API_BEARER_TOKEN']}"}
