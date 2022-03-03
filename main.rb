@@ -48,6 +48,12 @@ def main
     puts "Running in dry-run mode"
   end
 
+  if !OPTIONS[:dry_run]
+    log("Creating file directory: #{TWEET_DIRECTORY}")
+
+    Dir.mkdir(TWEET_DIRECTORY) unless Dir.exist?(TWEET_DIRECTORY)
+  end
+
   conn = build_faraday_connection
 
   user_response = get_user(conn, username)
@@ -55,7 +61,8 @@ def main
   user_name = user_response.body['data']['name']
 
   tweets = get_user_tweets(conn, user_id)
-  tweets.each do |tweet|
+  condensed_tweets = condense_threads(tweets)
+  condensed_tweets.each do |tweet|
     # Skip tweets that are replies to other users
     next if !tweet['in_reply_to_user_id'].nil? && tweet['in_reply_to_user_id'] != user_id
 
@@ -64,6 +71,50 @@ def main
 
     output_tweet_to_file(user_name, tweet_created_at, tweet_content)  
   end
+end
+
+# Tweet Parser Logic Helpers
+def condense_threads(tweets)
+  thread_cache = {}
+  reply_tweets = []
+
+  tweets.each do |tweet|
+    if tweet['referenced_tweets'].nil?
+      log("Tweet #{tweet['id']} is not a reply")
+      thread_cache[tweet['id']] = tweet
+    else
+      log("Tweet #{tweet['id']} is a reply")
+      reply_tweets << tweet
+    end
+  end
+
+  reply_tweets.each do |tweet|
+    referenced_tweet_id = tweet['referenced_tweets']&.first['id']
+    
+    if thread_cache[referenced_tweet_id].nil?
+      log("Could not find referenced tweet #{referenced_tweet_id} in cache for tweet #{tweet['id']}")
+      next
+    end
+
+    log("Combining tweet #{tweet['id']} with tweet #{referenced_tweet_id}")
+    thread_cache[referenced_tweet_id]['text'] += "\n\n#{tweet['text']}"
+  end
+
+  thread_cache.values
+end
+
+def output_tweet_to_file(author, created_at, content)
+  file_title = "#{created_at} - #{author} - #{generate_tweet_title(content)}"
+
+  log("Writing to file: #{file_title}")
+
+  if !OPTIONS[:dry_run]
+    File.open("#{TWEET_DIRECTORY}/#{file_title}", "w") { |f| f.write content }
+  end
+end
+
+def generate_tweet_title(content)
+  content[0..50].gsub(/[^0-9A-Za-z\s]|[\n]/, '')
 end
 
 # API Client Setup
@@ -88,15 +139,16 @@ def get_user_tweets(conn, user_id)
     {
       "tweet.fields": "created_at,in_reply_to_user_id",
       "max_results": MAX_TWEET_RESULTS_PER_REQUEST,
-      "exclude": "retweets"
+      "exclude": "retweets",
+      "expansions": "referenced_tweets.id"
     }
   )
-  puts "Fetched #{results.body['data'].length} tweets" if OPTIONS[:verbose]
+  log("Fetched #{results.body['data'].length} tweets")
   
   tweets += results.body['data']
   pagination_token = results.body['meta']['next_token']
   
-  puts "Pagination token is #{pagination_token}" if OPTIONS[:verbose]
+  log("Pagination token is #{pagination_token}")
 
   while !pagination_token.nil? && tweets.length < MAX_TWEET_RESULTS_TOTAL
     results = conn.get("users/#{user_id}/tweets", 
@@ -104,34 +156,24 @@ def get_user_tweets(conn, user_id)
         "tweet.fields": "created_at,in_reply_to_user_id",
         "max_results": MAX_TWEET_RESULTS_PER_REQUEST,
         "exclude": "retweets",
+        "expansions": "referenced_tweets.id",
         "pagination_token": pagination_token
       }
     )
-    puts "Fetched #{results.body['data'].length} tweets" if OPTIONS[:verbose]
+    log("Fetched #{results.body['data'].length} tweets")
     
     tweets += results.body['data']
     pagination_token = results.body['meta']['next_token']
 
-    puts "Pagination token is #{pagination_token}" if OPTIONS[:verbose]
+    log("Pagination token is #{pagination_token}")
   end
 
   tweets[0...MAX_TWEET_RESULTS_TOTAL]
 end
 
-# Tweet Parser Logic Helpers
-def output_tweet_to_file(author, created_at, content)
-  file_title = "#{created_at} - #{author} - #{generate_tweet_title(content)}"
-
-  if !OPTIONS[:dry_run]
-    Dir.mkdir(TWEET_DIRECTORY) unless Dir.exist?(TWEET_DIRECTORY)
-    File.open("#{TWEET_DIRECTORY}/#{file_title}", "w") { |f| f.write content }
-  else
-    puts "Writing to file: #{file_title}"
-  end
-end
-
-def generate_tweet_title(content)
-  content[0..50].gsub(/[^0-9A-Za-z\s]|[\n]/, '')
+# Logging
+def log(message)
+  puts message if OPTIONS[:verbose]
 end
 
 # Run the script
