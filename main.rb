@@ -4,6 +4,7 @@ require 'optparse'
 
 TWEET_DIRECTORY = "./tweets"
 
+# Options Parsing
 def parse_options
   options = {}
 
@@ -16,6 +17,7 @@ end
 
 OPTIONS = parse_options
 
+# Main
 def usage
 """
 Usage: ruby main.rb <username> [options]
@@ -61,6 +63,7 @@ def main
   end
 end
 
+# API Client Setup
 def build_faraday_connection
   Faraday.new(
     url: 'https://api.twitter.com/2',
@@ -71,6 +74,7 @@ def build_faraday_connection
   end
 end
 
+# API Methods
 def get_user(conn, username)
   conn.get("users/by/username/#{username}")
 end
@@ -85,6 +89,7 @@ def get_user_tweets(conn, user_id)
   )
 end
 
+# Tweet Parser Logic Helpers
 def output_tweet_to_file(author, created_at, content)
   file_title = "#{created_at} - #{author} - #{generate_tweet_title(content)}"
 
