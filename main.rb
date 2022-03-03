@@ -3,6 +3,8 @@ require 'faraday/net_http'
 require 'optparse'
 
 TWEET_DIRECTORY = "./tweets"
+MAX_TWEET_RESULTS_TOTAL = 50
+MAX_TWEET_RESULTS_PER_REQUEST = 20
 
 # Options Parsing
 def parse_options
@@ -10,6 +12,7 @@ def parse_options
 
   OptionParser.new do |opt|
     opt.on('--dry-run') { |o| options[:dry_run] = o }
+    opt.on('--verbose') { |o| options[:verbose] = o }
   end.parse!
 
   options
@@ -51,8 +54,8 @@ def main
   user_id = user_response.body['data']['id']
   user_name = user_response.body['data']['name']
 
-  tweets_response = get_user_tweets(conn, user_id)
-  tweets_response.body['data'].each do |tweet|
+  tweets = get_user_tweets(conn, user_id)
+  tweets.each do |tweet|
     # Skip tweets that are replies to other users
     next if !tweet['in_reply_to_user_id'].nil? && tweet['in_reply_to_user_id'] != user_id
 
@@ -80,13 +83,39 @@ def get_user(conn, username)
 end
 
 def get_user_tweets(conn, user_id)
-  conn.get("users/#{user_id}/tweets", 
+  tweets = []
+  results = conn.get("users/#{user_id}/tweets", 
     {
       "tweet.fields": "created_at,in_reply_to_user_id",
-      "max_results": 15,
+      "max_results": MAX_TWEET_RESULTS_PER_REQUEST,
       "exclude": "retweets"
     }
   )
+  puts "Fetched #{results.body['data'].length} tweets" if OPTIONS[:verbose]
+  
+  tweets += results.body['data']
+  pagination_token = results.body['meta']['next_token']
+  
+  puts "Pagination token is #{pagination_token}" if OPTIONS[:verbose]
+
+  while !pagination_token.nil? && tweets.length < MAX_TWEET_RESULTS_TOTAL
+    results = conn.get("users/#{user_id}/tweets", 
+      {
+        "tweet.fields": "created_at,in_reply_to_user_id",
+        "max_results": MAX_TWEET_RESULTS_PER_REQUEST,
+        "exclude": "retweets",
+        "pagination_token": pagination_token
+      }
+    )
+    puts "Fetched #{results.body['data'].length} tweets" if OPTIONS[:verbose]
+    
+    tweets += results.body['data']
+    pagination_token = results.body['meta']['next_token']
+
+    puts "Pagination token is #{pagination_token}" if OPTIONS[:verbose]
+  end
+
+  tweets[0...MAX_TWEET_RESULTS_TOTAL]
 end
 
 # Tweet Parser Logic Helpers
