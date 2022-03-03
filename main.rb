@@ -1,16 +1,46 @@
 require 'faraday'
 require 'faraday/net_http'
+require 'optparse'
 
 TWEET_DIRECTORY = "./tweets"
 
-# Usage: ruby main.rb <username>
-# TWITTER_API_BEARER_TOKEN must be set in the environment
+def parse_options
+  options = {}
+
+  OptionParser.new do |opt|
+    opt.on('--dry-run') { |o| options[:dry_run] = o }
+  end.parse!
+
+  options
+end
+
+OPTIONS = parse_options
+
+def usage
+"""
+Usage: ruby main.rb <username> [options]
+Options:
+  --dry-run: Don't actually write to file
+Environment:
+  TWITTER_API_BEARER_TOKEN must be set in the environment  
+"""
+end
 
 def main
   username = ARGV[0]
   if username.nil?
-    puts "Usage: ruby main.rb <username>"
+    puts usage
     exit
+  end
+
+  if ENV['TWITTER_API_BEARER_TOKEN'].nil?
+    puts "Error: TWITTER_API_BEARER_TOKEN must be set in the environment\n"
+    puts usage
+    exit
+  end
+
+  if OPTIONS[:dry_run]
+    puts "Running in dry-run mode"
   end
 
   conn = build_faraday_connection
@@ -56,10 +86,14 @@ def get_user_tweets(conn, user_id)
 end
 
 def output_tweet_to_file(author, created_at, content)
-  Dir.mkdir(TWEET_DIRECTORY) unless Dir.exist?(TWEET_DIRECTORY)
-
   file_title = "#{created_at} - #{author} - #{generate_tweet_title(content)}"
-  File.open("#{TWEET_DIRECTORY}/#{file_title}", "w") { |f| f.write content }
+
+  if !OPTIONS[:dry_run]
+    Dir.mkdir(TWEET_DIRECTORY) unless Dir.exist?(TWEET_DIRECTORY)
+    File.open("#{TWEET_DIRECTORY}/#{file_title}", "w") { |f| f.write content }
+  else
+    puts "Writing to file: #{file_title}"
+  end
 end
 
 def generate_tweet_title(content)
