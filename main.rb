@@ -67,7 +67,7 @@ def main
 
   user_response = get_user(conn, username)
   user_id = user_response.body['data']['id']
-  user_name = user_response.body['data']['name']
+  user_username = user_response.body['data']['username']
 
   tweets = get_user_tweets(conn, user_id)
   condensed_tweets = condense_threads(tweets)
@@ -79,7 +79,7 @@ def main
     tweet_content = tweet['text']
     tweet_created_at = tweet['created_at']
 
-    output_tweet_to_file(directory, user_name, tweet_id, tweet_created_at, tweet_content)  
+    output_tweet_to_file(directory, user_username, tweet_id, tweet_created_at, tweet_content)  
   end
 end
 
@@ -113,8 +113,8 @@ def condense_threads(tweets)
   thread_cache.values
 end
 
-def output_tweet_to_file(directory, author, id, created_at, content)
-  file_title = "#{created_at} - #{author} - #{generate_tweet_title(content)}"
+def output_tweet_to_file(directory, username, id, created_at, content)
+  file_title = "#{created_at} - #{username} - #{generate_tweet_title(content)}"
 
   log("Writing to file: #{file_title}")
 
