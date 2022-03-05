@@ -122,7 +122,7 @@ def output_tweet_to_file(directory, author, id, created_at, content)
   footer = "### Metadata\nTweet ID: #{id}\nCreated At: #{created_at}\n\n### Related\n\n"
 
   if !OPTIONS[:dry_run]
-    File.open("#{directory}/#{file_title}", "w") { |f| f.write "#{body}\n\n#{footer}" }
+    File.open("#{directory}/#{file_title}.md", "w") { |f| f.write "#{body}\n\n#{footer}" }
   end
 end
 
