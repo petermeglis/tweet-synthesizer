@@ -3,16 +3,21 @@ require 'faraday/net_http'
 require 'optparse'
 
 DEFAULT_TWEET_DIRECTORY = "./tweets"
-MAX_TWEET_RESULTS_TOTAL = 200
+DEFAULT_MAX_TWEET_RESULTS = 50
 MAX_TWEET_RESULTS_PER_REQUEST = 100
 
 # Options Parsing
 def parse_options
-  options = {}
+  # Set defaults
+  options = {
+    output_directory: DEFAULT_TWEET_DIRECTORY,
+    max_results: DEFAULT_MAX_TWEET_RESULTS
+  }
 
   OptionParser.new do |opt|
-    opt.on('-o DIRECTORY', '--output_directory DIRECTORY') { |o| options[:output_directory] = o }
-    opt.on('--after_id AFTER_ID') { |o| options[:after_id] = o }
+    opt.on('-o DIRECTORY', '--output-directory DIRECTORY') { |o| options[:output_directory] = o }
+    opt.on('--max-results MAX_RESULTS') { |o| options[:max_results] = o.to_i }
+    opt.on('--after-id AFTER_ID') { |o| options[:after_id] = o }
     opt.on('--dry-run') { |o| options[:dry_run] = o }
     opt.on('--verbose') { |o| options[:verbose] = o }
   end.parse!
@@ -28,6 +33,7 @@ def usage
 Usage: ruby main.rb <username> [options]
 Options:
   -o --output_directory <file_path>: Path to directory to dump tweet files. Creates the directory if it doesn't exist. Defaults to #{DEFAULT_TWEET_DIRECTORY}
+  --max_results <max_results>: Maximum number of tweets to retrieve. Defaults to #{DEFAULT_MAX_TWEET_RESULTS}
   --after_id <tweet_id>: Only get tweets older than this tweet_id
   --dry-run: Don't actually write to file
   --verbose: Output more information
@@ -53,14 +59,12 @@ def main
     puts "Running in dry-run mode"
   end
 
-  directory = OPTIONS[:output_directory] || DEFAULT_TWEET_DIRECTORY
-
   if !OPTIONS[:dry_run]
-    unless Dir.exist?(directory)
-      log("Creating file directory: #{directory}")
-      Dir.mkdir(directory)
+    unless Dir.exist?(OPTIONS[:output_directory])
+      log("Creating file directory: #{OPTIONS[:output_directory]}")
+      Dir.mkdir(OPTIONS[:output_directory])
     end
-    log("Using file directory: #{directory}")
+    log("Using file directory: #{OPTIONS[:output_directory]}")
   end
 
   conn = build_faraday_connection
@@ -79,7 +83,7 @@ def main
     tweet_content = tweet['text']
     tweet_created_at = tweet['created_at']
 
-    output_tweet_to_file(directory, user_username, tweet_id, tweet_created_at, tweet_content)  
+    output_tweet_to_file(user_username, tweet_id, tweet_created_at, tweet_content)  
   end
 end
 
@@ -113,7 +117,7 @@ def condense_threads(tweets)
   thread_cache.values
 end
 
-def output_tweet_to_file(directory, username, id, created_at, content)
+def output_tweet_to_file(username, id, created_at, content)
   file_title = "#{created_at} - #{username} - #{generate_tweet_title(content)}"
 
   log("Writing to file: #{file_title}")
@@ -122,7 +126,7 @@ def output_tweet_to_file(directory, username, id, created_at, content)
   footer = "### Metadata\nTweet ID: #{id}\nCreated At: #{created_at}\n\n### Related\n\n"
 
   if !OPTIONS[:dry_run]
-    File.open("#{directory}/#{file_title}.md", "w") { |f| f.write "#{body}\n\n#{footer}" }
+    File.open("#{OPTIONS[:output_directory]}/#{file_title}.md", "w") { |f| f.write "#{body}\n\n#{footer}" }
   end
 end
 
@@ -166,7 +170,7 @@ def get_user_tweets(conn, user_id)
   
   log("Pagination token is #{pagination_token}")
 
-  while !pagination_token.nil? && tweets.length < MAX_TWEET_RESULTS_TOTAL
+  while !pagination_token.nil? && tweets.length < OPTIONS[:max_results]
     results = conn.get("users/#{user_id}/tweets", 
       {
         "tweet.fields": "created_at,in_reply_to_user_id",
@@ -184,7 +188,7 @@ def get_user_tweets(conn, user_id)
     log("Pagination token is #{pagination_token}")
   end
 
-  tweets[0...MAX_TWEET_RESULTS_TOTAL]
+  tweets[0...OPTIONS[:max_results]]
 end
 
 # Logging
