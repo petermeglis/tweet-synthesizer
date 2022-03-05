@@ -2,7 +2,7 @@ require 'faraday'
 require 'faraday/net_http'
 require 'optparse'
 
-TWEET_DIRECTORY = "./tweets"
+DEFAULT_TWEET_DIRECTORY = "./tweets"
 MAX_TWEET_RESULTS_TOTAL = 50
 MAX_TWEET_RESULTS_PER_REQUEST = 20
 
@@ -11,6 +11,7 @@ def parse_options
   options = {}
 
   OptionParser.new do |opt|
+    opt.on('-o DIRECTORY', '--output_directory DIRECTORY') { |o| options[:output_directory] = o }
     opt.on('--after_id AFTER_ID') { |o| options[:after_id] = o }
     opt.on('--dry-run') { |o| options[:dry_run] = o }
     opt.on('--verbose') { |o| options[:verbose] = o }
@@ -26,6 +27,7 @@ def usage
 """
 Usage: ruby main.rb <username> [options]
 Options:
+  -o --output_directory <file_path>: Path to directory to dump tweet files. Creates the directory if it doesn't exist. Defaults to #{DEFAULT_TWEET_DIRECTORY}
   --after_id <tweet_id>: Only get tweets older than this tweet_id
   --dry-run: Don't actually write to file
   --verbose: Output more information
@@ -51,10 +53,14 @@ def main
     puts "Running in dry-run mode"
   end
 
-  if !OPTIONS[:dry_run]
-    log("Creating file directory: #{TWEET_DIRECTORY}")
+  directory = OPTIONS[:output_directory] || DEFAULT_TWEET_DIRECTORY
 
-    Dir.mkdir(TWEET_DIRECTORY) unless Dir.exist?(TWEET_DIRECTORY)
+  if !OPTIONS[:dry_run]
+    unless Dir.exist?(directory)
+      log("Creating file directory: #{directory}")
+      Dir.mkdir(directory)
+    end
+    log("Using file directory: #{directory}")
   end
 
   conn = build_faraday_connection
@@ -73,7 +79,7 @@ def main
     tweet_content = tweet['text']
     tweet_created_at = tweet['created_at']
 
-    output_tweet_to_file(user_name, tweet_id, tweet_created_at, tweet_content)  
+    output_tweet_to_file(directory, user_name, tweet_id, tweet_created_at, tweet_content)  
   end
 end
 
@@ -107,7 +113,7 @@ def condense_threads(tweets)
   thread_cache.values
 end
 
-def output_tweet_to_file(author, id, created_at, content)
+def output_tweet_to_file(directory, author, id, created_at, content)
   file_title = "#{created_at} - #{author} - #{generate_tweet_title(content)}"
 
   log("Writing to file: #{file_title}")
@@ -116,7 +122,7 @@ def output_tweet_to_file(author, id, created_at, content)
   footer = "### Metadata\nTweet ID: #{id}\nCreated At: #{created_at}\n\n### Related\n\n"
 
   if !OPTIONS[:dry_run]
-    File.open("#{TWEET_DIRECTORY}/#{file_title}", "w") { |f| f.write "#{body}\n\n#{footer}" }
+    File.open("#{directory}/#{file_title}", "w") { |f| f.write "#{body}\n\n#{footer}" }
   end
 end
 
