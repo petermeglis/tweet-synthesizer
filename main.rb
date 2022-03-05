@@ -11,6 +11,7 @@ def parse_options
   options = {}
 
   OptionParser.new do |opt|
+    opt.on('--after_id AFTER_ID') { |o| options[:after_id] = o }
     opt.on('--dry-run') { |o| options[:dry_run] = o }
     opt.on('--verbose') { |o| options[:verbose] = o }
   end.parse!
@@ -25,7 +26,9 @@ def usage
 """
 Usage: ruby main.rb <username> [options]
 Options:
+  --after_id <tweet_id>: Only get tweets older than this tweet_id
   --dry-run: Don't actually write to file
+  --verbose: Output more information
 Environment:
   TWITTER_API_BEARER_TOKEN must be set in the environment  
 """
@@ -66,10 +69,11 @@ def main
     # Skip tweets that are replies to other users
     next if !tweet['in_reply_to_user_id'].nil? && tweet['in_reply_to_user_id'] != user_id
 
+    tweet_id = tweet['id']
     tweet_content = tweet['text']
     tweet_created_at = tweet['created_at']
 
-    output_tweet_to_file(user_name, tweet_created_at, tweet_content)  
+    output_tweet_to_file(user_name, tweet_id, tweet_created_at, tweet_content)  
   end
 end
 
@@ -103,13 +107,16 @@ def condense_threads(tweets)
   thread_cache.values
 end
 
-def output_tweet_to_file(author, created_at, content)
+def output_tweet_to_file(author, id, created_at, content)
   file_title = "#{created_at} - #{author} - #{generate_tweet_title(content)}"
 
   log("Writing to file: #{file_title}")
 
+  body = "### Tweet\n#{content}"
+  footer = "### Metadata\nTweet ID: #{id}\nCreated At: #{created_at}\n\n### Related\n\n"
+
   if !OPTIONS[:dry_run]
-    File.open("#{TWEET_DIRECTORY}/#{file_title}", "w") { |f| f.write content }
+    File.open("#{TWEET_DIRECTORY}/#{file_title}", "w") { |f| f.write "#{body}\n\n#{footer}" }
   end
 end
 
@@ -135,14 +142,17 @@ end
 
 def get_user_tweets(conn, user_id)
   tweets = []
-  results = conn.get("users/#{user_id}/tweets", 
-    {
-      "tweet.fields": "created_at,in_reply_to_user_id",
-      "max_results": MAX_TWEET_RESULTS_PER_REQUEST,
-      "exclude": "retweets",
-      "expansions": "referenced_tweets.id"
-    }
-  )
+  options = {
+    "tweet.fields": "created_at,in_reply_to_user_id",
+    "max_results": MAX_TWEET_RESULTS_PER_REQUEST,
+    "exclude": "retweets",
+    "expansions": "referenced_tweets.id"
+  }
+  options.merge!(
+    { "until_id": OPTIONS[:after_id]}
+  ) if !OPTIONS[:after_id].nil?
+
+  results = conn.get("users/#{user_id}/tweets", options)
   log("Fetched #{results.body['data'].length} tweets")
   
   tweets += results.body['data']
