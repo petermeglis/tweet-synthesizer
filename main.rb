@@ -3,8 +3,8 @@ require 'faraday/net_http'
 require 'optparse'
 
 DEFAULT_TWEET_DIRECTORY = "./tweets"
-MAX_TWEET_RESULTS_TOTAL = 50
-MAX_TWEET_RESULTS_PER_REQUEST = 20
+MAX_TWEET_RESULTS_TOTAL = 200
+MAX_TWEET_RESULTS_PER_REQUEST = 100
 
 # Options Parsing
 def parse_options
