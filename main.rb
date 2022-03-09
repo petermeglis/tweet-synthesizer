@@ -131,7 +131,7 @@ def output_tweet_to_file(username, id, created_at, content)
 end
 
 def generate_tweet_title(content)
-  content[0..50].gsub(/[^0-9A-Za-z\s]|[\n]/, '')
+  content[0..75].gsub(/[^0-9A-Za-z\s]|[\n]/, '')
 end
 
 # API Client Setup
