@@ -5,6 +5,7 @@ require 'optparse'
 DEFAULT_TWEET_DIRECTORY = "./tweets"
 DEFAULT_MAX_TWEET_RESULTS = 50
 MAX_TWEET_RESULTS_PER_REQUEST = 100
+MAX_TWEET_TITLE_CHAR_LENGTH = 75
 
 # Options Parsing
 def parse_options
@@ -131,7 +132,7 @@ def output_tweet_to_file(username, id, created_at, content)
 end
 
 def generate_tweet_title(content)
-  content[0..75].gsub(/[^0-9A-Za-z\s]|[\n]/, '')
+  content[0..MAX_TWEET_TITLE_CHAR_LENGTH].gsub(/[^0-9A-Za-z\s]|[\n]/, '')
 end
 
 # API Client Setup
