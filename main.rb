@@ -19,6 +19,7 @@ def parse_options
     opt.on('-o DIRECTORY', '--output-directory DIRECTORY') { |o| options[:output_directory] = o }
     opt.on('--max-results MAX_RESULTS') { |o| options[:max_results] = o.to_i }
     opt.on('--after-id AFTER_ID') { |o| options[:after_id] = o }
+    opt.on('--since-id SINCE_ID') { |o| options[:since_id] = o }
     opt.on('--dry-run') { |o| options[:dry_run] = o }
     opt.on('--verbose') { |o| options[:verbose] = o }
   end.parse!
@@ -36,6 +37,7 @@ Options:
   -o --output_directory <file_path>: Path to directory to dump tweet files. Creates the directory if it doesn't exist. Defaults to #{DEFAULT_TWEET_DIRECTORY}
   --max-results <max_results>: Maximum number of tweets to retrieve. Defaults to #{DEFAULT_MAX_TWEET_RESULTS}
   --after-id <tweet_id>: Only get tweets older than this tweet_id
+  --since-id <tweet_id>: Only get tweets newer than this tweet_id
   --dry-run: Don't actually write to file
   --verbose: Output more information
 Environment:
@@ -165,6 +167,9 @@ def get_user_tweets(conn, user_id)
   options.merge!(
     { "until_id": OPTIONS[:after_id]}
   ) if !OPTIONS[:after_id].nil?
+  options.merge!(
+    { "since_id": OPTIONS[:since_id]}
+  ) if !OPTIONS[:since_id].nil?
 
   log("Getting tweets for user with id #{user_id}")
   results = conn.get("users/#{user_id}/tweets", options)
