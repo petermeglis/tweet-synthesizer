@@ -57,7 +57,7 @@ def main
   end
 
   if OPTIONS[:dry_run]
-    puts "Running in dry-run mode"
+    puts "Running in dry-run mode. This will not write to file."
   end
 
   if !OPTIONS[:dry_run]
@@ -65,8 +65,8 @@ def main
       log("Creating file directory: #{OPTIONS[:output_directory]}")
       Dir.mkdir(OPTIONS[:output_directory])
     end
-    log("Using file directory: #{OPTIONS[:output_directory]}")
   end
+  log("Using file directory: #{OPTIONS[:output_directory]}")
 
   conn = build_faraday_connection
 
@@ -95,10 +95,10 @@ def condense_threads(tweets)
 
   tweets.each do |tweet|
     if tweet['referenced_tweets'].nil?
-      log("Tweet #{tweet['id']} is not a reply")
+      # log("Tweet #{tweet['id']} is not a reply")
       thread_cache[tweet['id']] = tweet
     else
-      log("Tweet #{tweet['id']} is a reply")
+      # log("Tweet #{tweet['id']} is a reply")
       reply_tweets << tweet
     end
   end
@@ -107,7 +107,7 @@ def condense_threads(tweets)
     referenced_tweet_id = tweet['referenced_tweets']&.first['id']
     
     if thread_cache[referenced_tweet_id].nil?
-      log("Could not find referenced tweet #{referenced_tweet_id} in cache for tweet #{tweet['id']}")
+      log("Could not find referenced tweet #{referenced_tweet_id} in cache for tweet #{tweet['id']}. This could be a reply to a tweet that was not retrieved.")
       next
     end
 
@@ -148,7 +148,10 @@ end
 
 # API Methods
 def get_user(conn, username)
-  conn.get("users/by/username/#{username}")
+  log("Getting user: #{username}")
+  results = conn.get("users/by/username/#{username}")
+  log("Fetched user #{results.body['data']['username']} with id #{results.body['data']['id']}")
+  results
 end
 
 def get_user_tweets(conn, user_id)
@@ -163,6 +166,7 @@ def get_user_tweets(conn, user_id)
     { "until_id": OPTIONS[:after_id]}
   ) if !OPTIONS[:after_id].nil?
 
+  log("Getting tweets for user with id #{user_id}")
   results = conn.get("users/#{user_id}/tweets", options)
   log("Fetched #{results.body['data'].length} tweets")
   
