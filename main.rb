@@ -77,6 +77,10 @@ def main
   user_username = user_response.body['data']['username']
 
   tweets = get_user_tweets(conn, user_id)
+  if tweets.empty?
+    log("No tweets found for user #{username}. Exiting...")
+    return
+  end
   condensed_tweets = condense_threads(tweets)
   condensed_tweets.each do |tweet|
     # Skip tweets that are replies to other users
@@ -173,7 +177,10 @@ def get_user_tweets(conn, user_id)
 
   log("Getting tweets for user with id #{user_id}")
   results = conn.get("users/#{user_id}/tweets", options)
-  log("Fetched #{results.body['data'].length} tweets")
+
+  log("Fetched #{results.body['meta']['result_count']} tweets")
+
+  return [] if results.body['meta']['result_count'] == 0
   
   tweets += results.body['data']
   pagination_token = results.body['meta']['next_token']
