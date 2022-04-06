@@ -129,6 +129,11 @@ end
 def output_tweet_to_file(username, id, created_at, content)
   file_title = "#{created_at} - #{username} - #{generate_tweet_title(content)}"
 
+  if File.exist?("#{OPTIONS[:output_directory]}/#{file_title}.md")
+    log("File already exists at #{OPTIONS[:output_directory]}/#{file_title}.md Skipping...")
+    return
+  end
+
   log("Writing to file: #{file_title}")
 
   body = "### Tweet\n#{content}"
