@@ -22,6 +22,7 @@ def parse_options
     opt.on('--since-id SINCE_ID') { |o| options[:since_id] = o }
     opt.on('--dry-run') { |o| options[:dry_run] = o }
     opt.on('--verbose') { |o| options[:verbose] = o }
+    opt.on('--export-logs-path FILE_PATH') { |o| options[:export_logs_path] = o }
   end.parse!
 
   options
@@ -42,6 +43,7 @@ Options:
   --since-id <tweet_id>: Only get tweets newer than this tweet_id
   --dry-run: Don't actually write to file
   --verbose: Output more information
+  --export-logs-path <file_path>: Output logs from --verbose to file
 Environment:
   TWITTER_API_BEARER_TOKEN must be set in the environment  
 """
@@ -50,18 +52,18 @@ end
 def main
   username = ARGV[0]
   if username.nil?
-    puts usage
+    log(usage, force_verbose: true)
     exit
   end
 
   if ENV['TWITTER_API_BEARER_TOKEN'].nil?
-    puts "Error: TWITTER_API_BEARER_TOKEN must be set in the environment\n"
-    puts usage
+    log("Error: TWITTER_API_BEARER_TOKEN must be set in the environment\n", force_verbose: true)
+    log(usage, force_verbose: true)
     exit
   end
 
   if OPTIONS[:dry_run]
-    puts "Running in dry-run mode. This will not write to file."
+    log("Running in dry-run mode. This will not write to file.", force_verbose: true)
   end
 
   if !OPTIONS[:dry_run]
@@ -94,6 +96,8 @@ def main
 
     output_tweet_to_file(user_username, tweet_id, tweet_created_at, tweet_content)  
   end
+
+  log("main.rb Done!\n\n")
 end
 
 # Tweet Parser Logic Helpers
@@ -216,8 +220,12 @@ def get_user_tweets(conn, user_id)
 end
 
 # Logging
-def log(message)
-  puts message if OPTIONS[:verbose]
+def log(message, force_verbose: false)
+  return unless force_verbose || OPTIONS[:verbose]
+  puts message
+
+  return unless OPTIONS[:export_logs_path]
+  File.open(OPTIONS[:export_logs_path], "a") { |f| f.write("#{message}\n") }
 end
 
 # Run the script

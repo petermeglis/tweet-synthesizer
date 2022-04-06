@@ -16,6 +16,7 @@ def parse_options
     opt.on('--max-results MAX_RESULTS') { |o| options[:max_results] = o.to_i }
     opt.on('--dry-run') { |o| options[:dry_run] = o }
     opt.on('--verbose') { |o| options[:verbose] = o }
+    opt.on('--export-logs-path PATH') { |o| options[:export_logs_path] = o }
   end.parse!
 
   options
@@ -36,6 +37,7 @@ Options:
   --max-results <max_results>: Maximum number of tweets to retrieve per user. Defaults to #{DEFAULT_MAX_TWEET_RESULTS}
   --dry-run: Don't actually run subcommands or write to file.
   --verbose: Output more information.
+  --export-logs-path <file_path>: Output logs from --verbose to file
 Input file format:
   <twitter_username>, <last_tweet_id>
   <twitter_username>, <last_tweet_id>
@@ -45,12 +47,12 @@ end
 
 def update
   if OPTIONS[:input_path].nil?
-    puts usage
+    log(usage, force_verbose: true)
     exit
   end
   
   if OPTIONS[:dry_run]
-    puts "Running in dry-run mode. Does not run subcommand and does not write to file."
+    log("Running in dry-run mode. Does not run subcommand and does not write to file.", force_verbose: true)
   end
 
   log("Using input file: #{OPTIONS[:input_path]}")
@@ -62,6 +64,8 @@ def update
 
     update_tweets(username, tweet_id)
   end
+
+  log("update.rb Done!\n\n")
 end
 
 def read_updates_from_file(file_path)
@@ -90,6 +94,10 @@ def update_tweets(username, tweet_id)
     command += "--verbose "
   end
 
+  if OPTIONS[:export_logs_path]
+    command += "--export-logs-path #{OPTIONS[:export_logs_path]} "
+  end
+
   if OPTIONS[:output_directory]
     command += "--output-directory #{OPTIONS[:output_directory]} "
   end
@@ -110,8 +118,12 @@ def update_tweets(username, tweet_id)
 end
 
 # Logging
-def log(message)
-  puts message if OPTIONS[:verbose]
+def log(message, force_verbose: false)
+  return unless force_verbose || OPTIONS[:verbose]
+  puts message
+
+  return unless OPTIONS[:export_logs_path]
+  File.open(OPTIONS[:export_logs_path], "a") { |f| f.write("#{message}\n") }
 end
 
 # Run the script
