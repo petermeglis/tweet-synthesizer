@@ -32,6 +32,8 @@ OPTIONS = parse_options
 # Main
 def usage
 """
+Fetches tweets from a user and outputs them to a file.
+
 Usage: ruby main.rb <username> [options]
 Options:
   -o --output_directory <file_path>: Path to directory to dump tweet files. Creates the directory if it doesn't exist. Defaults to #{DEFAULT_TWEET_DIRECTORY}
