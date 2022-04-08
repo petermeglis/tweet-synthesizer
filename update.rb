@@ -17,6 +17,7 @@ def parse_options
     opt.on('--dry-run') { |o| options[:dry_run] = o }
     opt.on('--verbose') { |o| options[:verbose] = o }
     opt.on('--export-logs-path PATH') { |o| options[:export_logs_path] = o }
+    opt.on('--overwrite') { |o| options[:overwrite] = o }
   end.parse!
 
   options
@@ -38,6 +39,7 @@ Options:
   --dry-run: Don't actually run subcommands or write to file.
   --verbose: Output more information.
   --export-logs-path <file_path>: Output logs from --verbose to file
+  --overwrite: Overwrite existing files in output directory. Without this flag existing files will be skipped.
 Input file format:
   <twitter_username>, <last_tweet_id>
   <twitter_username>, <last_tweet_id>
@@ -104,6 +106,10 @@ def update_tweets(username, tweet_id)
 
   if OPTIONS[:max_results]
     command += "--max-results #{OPTIONS[:max_results]} "
+  end
+
+  if OPTIONS[:overwrite]
+    command += "--overwrite #{OPTIONS[:overwrite]} "
   end
 
   command += "--since-id #{tweet_id} "
