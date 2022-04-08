@@ -101,33 +101,74 @@ def main
 end
 
 # Tweet Parser Logic Helpers
+
+# Condenses tweets into a single tweet per thread.
+# returns an array of tweets where each tweet's 'text'
+# has the text from all tweets in the thread (if applicable).
 def condense_threads(tweets)
+  # tweet_cache stores the tweet data (id, text, created_at, etc.) for each tweet.
+  # Format:
+  # {
+  #   tweet_id: tweet_data,
+  #   tweet_id: tweet_data,
+  #   ...
+  # }
+  tweet_cache = {}
+
+  # thread_cache stores the inverse direction of the 'referenced_tweets' data
+  # we get from the API.
+  # Format:
+  # {
+  #   tweet_id: reply_tweet_id,
+  #   tweet_id: reply_tweet_id,
+  #   ...
+  # }
   thread_cache = {}
-  reply_tweets = []
+
+  # Base tweets are tweets with no referenced tweets (i.e. are not replies).
+  base_tweets = []
 
   tweets.each do |tweet|
     if tweet['referenced_tweets'].nil?
       # log("Tweet #{tweet['id']} is not a reply")
-      thread_cache[tweet['id']] = tweet
+
+      base_tweets << tweet
     else
       # log("Tweet #{tweet['id']} is a reply")
-      reply_tweets << tweet
+
+      # For now, assume there's only one referenced tweet.
+      referenced_tweet = tweet['referenced_tweets'].first
+      thread_cache[referenced_tweet['id']] = tweet['id']
     end
+
+    tweet_cache[tweet['id']] = tweet
   end
 
-  reply_tweets.each do |tweet|
-    referenced_tweet_id = tweet['referenced_tweets']&.first['id']
-    
-    if thread_cache[referenced_tweet_id].nil?
-      log("Could not find referenced tweet #{referenced_tweet_id} in cache for tweet #{tweet['id']}. This could be a reply to a tweet that was not retrieved.")
+  base_tweets.each do |base_tweet|
+    if thread_cache[base_tweet['id']].nil?
+      log("#{base_tweet['id']} is a base tweet with no replies.")
       next
     end
 
-    log("Combining tweet #{tweet['id']} with tweet #{referenced_tweet_id}")
-    thread_cache[referenced_tweet_id]['text'] += "\n\n#{tweet['text']}"
+    reply_tweet_id = thread_cache[base_tweet['id']]
+
+    # Loop through the reply tweets in the thread.
+    while !reply_tweet_id.nil? do
+      current_tweet_in_thread = tweet_cache[reply_tweet_id]
+
+      if current_tweet_in_thread.nil?
+        # log("Reply tweet data not found in cache for #{reply_tweet_id}. This could be a reply to a tweet that was not retrieved.")
+        break
+      end
+
+      log("Combining base tweet #{base_tweet['id']} with text from reply tweet #{current_tweet_in_thread['id']}.")
+      base_tweet['text'] += "\n\n#{current_tweet_in_thread['text']}"
+
+      reply_tweet_id = thread_cache[current_tweet_in_thread['id']]
+    end
   end
 
-  thread_cache.values
+  base_tweets
 end
 
 def output_tweet_to_file(username, id, created_at, content)
