@@ -23,6 +23,7 @@ def parse_options
     opt.on('--dry-run') { |o| options[:dry_run] = o }
     opt.on('--verbose') { |o| options[:verbose] = o }
     opt.on('--export-logs-path FILE_PATH') { |o| options[:export_logs_path] = o }
+    opt.on('--overwrite') { |o| options[:overwrite] = o }
   end.parse!
 
   options
@@ -44,6 +45,7 @@ Options:
   --dry-run: Don't actually write to file
   --verbose: Output more information
   --export-logs-path <file_path>: Output logs from --verbose to file
+  --overwrite: Overwrite existing files. Without this flag existing files will be skipped.
 Environment:
   TWITTER_API_BEARER_TOKEN must be set in the environment  
 """
@@ -174,7 +176,7 @@ end
 def output_tweet_to_file(username, id, created_at, content)
   file_title = "#{created_at} - #{username} - #{generate_tweet_title(content)}"
 
-  if File.exist?("#{OPTIONS[:output_directory]}/#{file_title}.md")
+  if !OPTIONS[:overwrite] && File.exist?("#{OPTIONS[:output_directory]}/#{file_title}.md")
     log("File already exists at #{OPTIONS[:output_directory]}/#{file_title}.md Skipping...")
     return
   end
