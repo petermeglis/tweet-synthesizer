@@ -31,3 +31,7 @@ ruby update.rb --verbose -i input.csv -o ~/tweets --max-results 50
 
 # Use Case
 This tool is helping me synthesize tweets in https://github.com/petermeglis/twitter-brain
+
+# Notes
+Add only additions to git add:
+`git diff --stat=10000 | grep -E "\d\ [+]+[^-]+$" | cut -d "|" -f1 | sed 's/\(tweets.*\.md\)/\"\1\"/g' | xargs git add`
