@@ -7,6 +7,8 @@ DEFAULT_MAX_TWEET_RESULTS = 50
 MAX_TWEET_RESULTS_PER_REQUEST = 100
 MAX_TWEET_TITLE_CHAR_LENGTH = 75
 
+FILE_FORMAT_REGEX = /### Tweet\n(?<tweet_content>(.|\n)*)### Metadata\n(?<metadata>(.|\n)*)### Related\n(?<related>(.|\n)*)/
+
 # Options Parsing
 def parse_options
   # Set defaults
@@ -24,6 +26,7 @@ def parse_options
     opt.on('--verbose') { |o| options[:verbose] = o }
     opt.on('--export-logs-path FILE_PATH') { |o| options[:export_logs_path] = o }
     opt.on('--overwrite') { |o| options[:overwrite] = o }
+    opt.on('--overwrite-only-tweets') { |o| options[:overwrite_only_tweets] = o }
   end.parse!
 
   options
@@ -45,7 +48,8 @@ Options:
   --dry-run: Don't actually write to file
   --verbose: Output more information
   --export-logs-path <file_path>: Output logs from --verbose to file
-  --overwrite: Overwrite existing files. Without this flag existing files will be skipped.
+  --overwrite: Overwrite existing files fully. Without this flag existing files will be skipped.
+  --overwrite-only-tweets: Overwrite only the tweet text portion of existing files. Without this flag existing files will be skipped.
 Environment:
   TWITTER_API_BEARER_TOKEN must be set in the environment  
 """
@@ -173,22 +177,48 @@ def condense_threads(tweets)
   base_tweets
 end
 
-def output_tweet_to_file(username, id, created_at, content)
-  file_title = "#{created_at} - #{username} - #{generate_tweet_title(content)}"
+def output_tweet_to_file(username, id, created_at, tweet_content)
+  file_title = "#{created_at} - #{username} - #{generate_tweet_title(tweet_content)}"
+  file_path = "#{OPTIONS[:output_directory]}/#{file_title}.md"
 
-  if !OPTIONS[:overwrite] && File.exist?("#{OPTIONS[:output_directory]}/#{file_title}.md")
-    log("File already exists at #{OPTIONS[:output_directory]}/#{file_title}.md Skipping...")
+  if !should_overwrite? && File.exist?("#{OPTIONS[:output_directory]}/#{file_title}.md")
+    log("Skipping file because it already exists: #{file_path}")
     return
   end
 
-  log("Writing to file: #{file_title}")
+  if should_overwrite? && File.exist?("#{OPTIONS[:output_directory]}/#{file_title}.md")
+    log("Overwriting file: #{file_path}")
+  end
 
-  body = "### Tweet\n#{content}"
+  if !should_overwrite? && !File.exist?("#{OPTIONS[:output_directory]}/#{file_title}.md")
+    log("Writing to file: #{file_title}")
+  end
+
+  body = "### Tweet\n#{tweet_content}"
   footer = "### Metadata\nTweet ID: #{id}\nCreated At: #{created_at}\n\n### Related\n\n"
 
   if !OPTIONS[:dry_run]
-    File.open("#{OPTIONS[:output_directory]}/#{file_title}.md", "w") { |f| f.write "#{body}\n\n#{footer}" }
+    if OPTIONS[:overwrite_only_tweets]
+      File.open(file_path, 'r+') do |file|
+        previous_file_content = file.read
+        previous_tweet_content = previous_file_content.match(FILE_FORMAT_REGEX)[:tweet_content]
+
+        new_tweet_content = "#{tweet_content}\n\n"
+        log("Replacing tweet content (previous/new): #{previous_tweet_content.length}/#{new_tweet_content.length}")
+
+        new_file_content = previous_file_content.gsub(previous_tweet_content, new_tweet_content)
+
+        file.rewind
+        file.write(new_file_content)
+      end  
+    else
+      File.open(file_path, "w") { |f| f.write "#{body}\n\n#{footer}" }
+    end
   end
+end
+
+def should_overwrite?
+  OPTIONS[:overwrite] || OPTIONS[:overwrite_only_tweets]
 end
 
 def generate_tweet_title(content)
