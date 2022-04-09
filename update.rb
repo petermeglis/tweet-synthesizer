@@ -82,7 +82,7 @@ def update
   updates_array = read_updates_from_file(OPTIONS[:input_path])
 
   updates_array.each do |username, tweet_id|
-    log("Updating #{username} after tweet ID #{tweet_id}")
+    log("Updating #{username}, tweet ID #{tweet_id}")
 
     update_tweets(username, tweet_id)
   end

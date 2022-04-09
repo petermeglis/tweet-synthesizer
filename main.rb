@@ -181,16 +181,16 @@ def output_tweet_to_file(username, id, created_at, tweet_content)
   file_title = "#{created_at} - #{username} - #{generate_tweet_title(tweet_content)}"
   file_path = "#{OPTIONS[:output_directory]}/#{file_title}.md"
 
-  if !should_overwrite? && File.exist?("#{OPTIONS[:output_directory]}/#{file_title}.md")
+  if !should_overwrite? && File.exist?(file_path)
     log("Skipping file because it already exists: #{file_path}")
     return
   end
 
-  if should_overwrite? && File.exist?("#{OPTIONS[:output_directory]}/#{file_title}.md")
+  if should_overwrite? && File.exist?(file_path)
     log("Overwriting file: #{file_path}")
   end
 
-  if !should_overwrite? && !File.exist?("#{OPTIONS[:output_directory]}/#{file_title}.md")
+  if !should_overwrite? && !File.exist?(file_path)
     log("Writing to file: #{file_title}")
   end
 
@@ -198,7 +198,7 @@ def output_tweet_to_file(username, id, created_at, tweet_content)
   footer = "### Metadata\nTweet ID: #{id}\nCreated At: #{created_at}\n\n### Related\n\n"
 
   if !OPTIONS[:dry_run]
-    if OPTIONS[:overwrite_only_tweet_content]
+    if OPTIONS[:overwrite_only_tweet_content] && File.exist?(file_path)
       File.open(file_path, 'r+') do |file|
         previous_file_content = file.read
         previous_tweet_content = previous_file_content.match(FILE_FORMAT_REGEX)[:tweet_content]
@@ -210,7 +210,10 @@ def output_tweet_to_file(username, id, created_at, tweet_content)
 
         file.rewind
         file.write(new_file_content)
-      end  
+      rescue => e
+        log("Error overwriting tweet content: #{file_path}")
+        log("Error: #{e.message}")
+      end
     else
       File.open(file_path, "w") { |f| f.write "#{body}\n\n#{footer}" }
     end
