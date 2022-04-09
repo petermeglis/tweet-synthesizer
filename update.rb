@@ -111,11 +111,11 @@ def update_tweets(username, tweet_id)
   end
 
   if OPTIONS[:overwrite]
-    command += "--overwrite #{OPTIONS[:overwrite]} "
+    command += "--overwrite "
   end
 
   if OPTIONS[:overwrite_only_tweet_content]
-    command += "--overwrite-only-tweet-content #{OPTIONS[:overwrite_only_tweet_content]} "
+    command += "--overwrite-only-tweet-content "
   end
 
   command += "--since-id #{tweet_id} "
