@@ -3,16 +3,27 @@ require 'optparse'
 DEFAULT_TWEET_DIRECTORY = "./tweets"
 DEFAULT_MAX_TWEET_RESULTS = 50
 
+COMMAND_SINCE = :since
+COMMAND_AFTER = :after
+DEFAULT_COMMAND = COMMAND_SINCE
+
+COMMANDS = {
+  since: COMMAND_SINCE,
+  after: COMMAND_AFTER
+}
+
 # Options Parsing
 def parse_options
   # Set defaults
   options = {
-    max_results: DEFAULT_MAX_TWEET_RESULTS
+    max_results: DEFAULT_MAX_TWEET_RESULTS,
+    command: DEFAULT_COMMAND
   }
 
   OptionParser.new do |opt|
     opt.on('-i PATH', '--input-path PATH') { |o| options[:input_path] = o }
     opt.on('-o DIRECTORY', '--output-directory DIRECTORY') { |o| options[:output_directory] = o }
+    opt.on('--command COMMAND') { |o| options[:command] = o.to_sym }
     opt.on('--max-results MAX_RESULTS') { |o| options[:max_results] = o.to_i }
     opt.on('--dry-run') { |o| options[:dry_run] = o }
     opt.on('--verbose') { |o| options[:verbose] = o }
@@ -36,6 +47,7 @@ Required Options:
   -i --input-path <file_path>: Path to file containing usernames and tweet IDs to update (see format below).
 Options:
   -o --output_directory <file_path>: Path to directory to dump tweet files. Creates the directory if it doesn't exist. Defaults to #{DEFAULT_TWEET_DIRECTORY}
+  --command <since|after>: Command to run. Defaults to #{DEFAULT_COMMAND}.
   --max-results <max_results>: Maximum number of tweets to retrieve per user. Defaults to #{DEFAULT_MAX_TWEET_RESULTS}
   --dry-run: Don't actually run subcommands or write to file.
   --verbose: Output more information.
@@ -51,6 +63,12 @@ end
 
 def update
   if OPTIONS[:input_path].nil?
+    log(usage, force_verbose: true)
+    exit
+  end
+
+  command = OPTIONS[:command]
+  if command.nil? || COMMANDS[command].nil?
     log(usage, force_verbose: true)
     exit
   end
@@ -118,7 +136,12 @@ def update_tweets(username, tweet_id)
     command += "--overwrite-only-tweet-content "
   end
 
-  command += "--since-id #{tweet_id} "
+  case OPTIONS[:command]
+  when COMMAND_SINCE
+    command += "--since-id #{tweet_id}"
+  when COMMAND_AFTER
+    command += "--after-id #{tweet_id}"
+  end
 
   if OPTIONS[:dry_run]
     log "Would now run the command: `#{command}`"
