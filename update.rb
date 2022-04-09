@@ -18,6 +18,7 @@ def parse_options
     opt.on('--verbose') { |o| options[:verbose] = o }
     opt.on('--export-logs-path PATH') { |o| options[:export_logs_path] = o }
     opt.on('--overwrite') { |o| options[:overwrite] = o }
+    opt.on('--overwrite-only-tweet-content') { |o| options[:overwrite_only_tweet_content] = o }
   end.parse!
 
   options
@@ -40,6 +41,7 @@ Options:
   --verbose: Output more information.
   --export-logs-path <file_path>: Output logs from --verbose to file
   --overwrite: Overwrite existing files in output directory. Without this flag existing files will be skipped.
+  --overwrite-only-tweet-content: Overwrite only the tweet text portion of existing files. Without this flag existing files will be skipped.
 Input file format:
   <twitter_username>, <last_tweet_id>
   <twitter_username>, <last_tweet_id>
@@ -110,6 +112,10 @@ def update_tweets(username, tweet_id)
 
   if OPTIONS[:overwrite]
     command += "--overwrite #{OPTIONS[:overwrite]} "
+  end
+
+  if OPTIONS[:overwrite_only_tweet_content]
+    command += "--overwrite-only-tweet-content #{OPTIONS[:overwrite_only_tweet_content]} "
   end
 
   command += "--since-id #{tweet_id} "
