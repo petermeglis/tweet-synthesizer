@@ -275,15 +275,9 @@ def get_user_tweets(conn, user_id)
   log("Pagination token is #{pagination_token}")
 
   while !pagination_token.nil? && tweets.length < OPTIONS[:max_results]
-    results = conn.get("users/#{user_id}/tweets", 
-      {
-        "tweet.fields": "created_at,in_reply_to_user_id",
-        "max_results": MAX_TWEET_RESULTS_PER_REQUEST,
-        "exclude": "retweets",
-        "expansions": "referenced_tweets.id",
-        "pagination_token": pagination_token
-      }
-    )
+    new_options = options.merge({"pagination_token": pagination_token})
+    results = conn.get("users/#{user_id}/tweets", new_options)
+
     log("Fetched #{results.body['data'].length} tweets")
     
     tweets += results.body['data']
