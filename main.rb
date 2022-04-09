@@ -26,7 +26,7 @@ def parse_options
     opt.on('--verbose') { |o| options[:verbose] = o }
     opt.on('--export-logs-path FILE_PATH') { |o| options[:export_logs_path] = o }
     opt.on('--overwrite') { |o| options[:overwrite] = o }
-    opt.on('--overwrite-only-tweets') { |o| options[:overwrite_only_tweets] = o }
+    opt.on('--overwrite-only-tweet-content') { |o| options[:overwrite_only_tweet_content] = o }
   end.parse!
 
   options
@@ -49,7 +49,7 @@ Options:
   --verbose: Output more information
   --export-logs-path <file_path>: Output logs from --verbose to file
   --overwrite: Overwrite existing files fully. Without this flag existing files will be skipped.
-  --overwrite-only-tweets: Overwrite only the tweet text portion of existing files. Without this flag existing files will be skipped.
+  --overwrite-only-tweet-content: Overwrite only the tweet text portion of existing files. Without this flag existing files will be skipped.
 Environment:
   TWITTER_API_BEARER_TOKEN must be set in the environment  
 """
@@ -198,7 +198,7 @@ def output_tweet_to_file(username, id, created_at, tweet_content)
   footer = "### Metadata\nTweet ID: #{id}\nCreated At: #{created_at}\n\n### Related\n\n"
 
   if !OPTIONS[:dry_run]
-    if OPTIONS[:overwrite_only_tweets]
+    if OPTIONS[:overwrite_only_tweet_content]
       File.open(file_path, 'r+') do |file|
         previous_file_content = file.read
         previous_tweet_content = previous_file_content.match(FILE_FORMAT_REGEX)[:tweet_content]
@@ -218,7 +218,7 @@ def output_tweet_to_file(username, id, created_at, tweet_content)
 end
 
 def should_overwrite?
-  OPTIONS[:overwrite] || OPTIONS[:overwrite_only_tweets]
+  OPTIONS[:overwrite] || OPTIONS[:overwrite_only_tweet_content]
 end
 
 def generate_tweet_title(content)
