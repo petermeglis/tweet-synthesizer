@@ -2,6 +2,7 @@ require 'faraday'
 require 'faraday/net_http'
 require 'optparse'
 
+require_relative "../helpers/api_client"
 require_relative "../helpers/logger"
 
 DEFAULT_TWEET_DIRECTORY = "./tweets"
@@ -60,6 +61,7 @@ end
 
 def main
   @logger = Logger.new(verbose: OPTIONS[:verbose], export_logs_path: OPTIONS[:export_logs_path])
+  @client = ApiClient.new(logger: @logger)
 
   username = ARGV[0]
   if username.nil?
@@ -85,13 +87,16 @@ def main
   end
   log("Using file directory: #{OPTIONS[:output_directory]}")
 
-  conn = build_faraday_connection
-
-  user_response = get_user(conn, username)
+  user_response = @client.get_user(username)
   user_id = user_response.body['data']['id']
   user_username = user_response.body['data']['username']
 
-  tweets = get_user_tweets(conn, user_id)
+  tweets = @client.get_user_tweets(user_id, {
+    after_id: OPTIONS[:after_id],
+    since_id: OPTIONS[:since_id],
+    max_results: OPTIONS[:max_results],
+    max_tweet_results_per_request: MAX_TWEET_RESULTS_PER_REQUEST
+  })
   if tweets.empty?
     log("No tweets found for user #{username}. Exiting...")
     return
@@ -231,67 +236,6 @@ end
 
 def generate_tweet_title(content)
   content[0..MAX_TWEET_TITLE_CHAR_LENGTH].gsub(/[^0-9A-Za-z\s]|[\n]/, '')
-end
-
-# API Client Setup
-def build_faraday_connection
-  Faraday.new(
-    url: 'https://api.twitter.com/2',
-    headers: {'Authorization' => "Bearer #{ENV['TWITTER_API_BEARER_TOKEN']}"}
-  ) do |f|
-    f.response :json
-    f.adapter :net_http
-  end
-end
-
-# API Methods
-def get_user(conn, username)
-  log("Getting user: #{username}")
-  results = conn.get("users/by/username/#{username}")
-  log("Fetched user #{results.body['data']['username']} with id #{results.body['data']['id']}")
-  results
-end
-
-def get_user_tweets(conn, user_id)
-  tweets = []
-  options = {
-    "tweet.fields": "created_at,in_reply_to_user_id",
-    "max_results": MAX_TWEET_RESULTS_PER_REQUEST,
-    "exclude": "retweets",
-    "expansions": "referenced_tweets.id"
-  }
-  options.merge!(
-    { "until_id": OPTIONS[:after_id]}
-  ) if !OPTIONS[:after_id].nil?
-  options.merge!(
-    { "since_id": OPTIONS[:since_id]}
-  ) if !OPTIONS[:since_id].nil?
-
-  log("Getting tweets for user with id #{user_id}")
-  results = conn.get("users/#{user_id}/tweets", options)
-
-  log("Fetched #{results.body['meta']['result_count']} tweets")
-
-  return [] if results.body['meta']['result_count'] == 0
-
-  tweets += results.body['data']
-  pagination_token = results.body['meta']['next_token']
-
-  log("Pagination token is #{pagination_token}")
-
-  while !pagination_token.nil? && tweets.length < OPTIONS[:max_results]
-    new_options = options.merge({"pagination_token": pagination_token})
-    results = conn.get("users/#{user_id}/tweets", new_options)
-
-    log("Fetched #{results.body['data'].length} tweets")
-
-    tweets += results.body['data']
-    pagination_token = results.body['meta']['next_token']
-
-    log("Pagination token is #{pagination_token}")
-  end
-
-  tweets[0...OPTIONS[:max_results]]
 end
 
 def log(message, force_verbose: false)
