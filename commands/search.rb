@@ -1,6 +1,8 @@
 require 'optparse'
 require 'time'
 
+require_relative "../helpers/logger"
+
 SORT_FIRST = :first
 SORT_LAST = :last
 SORTS = {
@@ -19,8 +21,7 @@ TWEET_ID_REGEX = /Tweet\ ID\:\ (?<tweet_id>\d+)/
 # Options Parsing
 def parse_options
   # Set defaults
-  options = {
-  }
+  options = {}
 
   OptionParser.new do |opt|
     opt.on('-u USERNAME', '--username USERNAME') { |o| options[:username] = o }
@@ -36,9 +37,11 @@ OPTIONS = parse_options
 # Search
 def usage
 """
-Searches through a directory of tweet files.
+Searches through a directory of tweet files for a given field.
 
-Usage: ruby search.rb <sort> <field> <directory> [options]
+Usage: ruby commands/search.rb <sort> <field> <directory> [options]
+Sort: first, last
+Field: id
 Options:
   -u --username <username>: Only search for files by this username.
   --export-results-path <file_path>: Export results to this path.
@@ -47,6 +50,8 @@ Options:
 end
 
 def search
+  @logger = Logger.new(verbose: OPTIONS[:verbose])
+
   sort = ARGV[0].to_sym
   if sort.nil? || SORTS[sort].nil?
     log(usage, force_verbose: true)
@@ -166,10 +171,8 @@ def search_id(file_path)
   end
 end
 
-# Logging
 def log(message, force_verbose: false)
-  return unless OPTIONS[:verbose]
-  puts message
+  @logger.log("#{LOG_PREFIX} - #{message}", force_verbose: force_verbose)
 end
 
 # Run the script

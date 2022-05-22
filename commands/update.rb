@@ -1,5 +1,7 @@
 require 'optparse'
 
+require_relative "../helpers/logger"
+
 DEFAULT_TWEET_DIRECTORY = "./tweets"
 DEFAULT_MAX_TWEET_RESULTS = 50
 
@@ -11,6 +13,8 @@ COMMANDS = {
   since: COMMAND_SINCE,
   after: COMMAND_AFTER
 }
+
+LOG_PREFIX = "update.rb"
 
 # Options Parsing
 def parse_options
@@ -42,7 +46,7 @@ def usage
 """
 Takes input from a file and runs the main.rb fetch tweets script for each user and tweet ID.
 
-Usage: ruby update.rb --input-path <file_path> [options]
+Usage: ruby commands/update.rb --input-path <file_path> [options]
 Required Options:
   -i --input-path <file_path>: Path to file containing usernames and tweet IDs to update (see format below).
 Options:
@@ -62,6 +66,8 @@ Input file format:
 end
 
 def update
+  @logger = Logger.new(verbose: OPTIONS[:verbose], export_logs_path: OPTIONS[:export_logs_path])
+
   if OPTIONS[:input_path].nil?
     log(usage, force_verbose: true)
     exit
@@ -144,21 +150,16 @@ def update_tweets(username, tweet_id)
   end
 
   if OPTIONS[:dry_run]
-    log "Would now run the command: `#{command}`"
+    log("Would now run the command: `#{command}`")
   else
-    log "Running command: `#{command}`"
+    log("Running command: `#{command}`")
 
     system(command)
   end
 end
 
-# Logging
 def log(message, force_verbose: false)
-  return unless force_verbose || OPTIONS[:verbose]
-  puts message
-
-  return unless OPTIONS[:export_logs_path]
-  File.open(OPTIONS[:export_logs_path], "a") { |f| f.write("#{message}\n") }
+  @logger.log("#{LOG_PREFIX} - #{message}", force_verbose: force_verbose)
 end
 
 # Run the script

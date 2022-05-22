@@ -2,12 +2,15 @@ require 'faraday'
 require 'faraday/net_http'
 require 'optparse'
 
+require_relative "../helpers/logger"
+
 DEFAULT_TWEET_DIRECTORY = "./tweets"
 DEFAULT_MAX_TWEET_RESULTS = 50
 MAX_TWEET_RESULTS_PER_REQUEST = 100
 MAX_TWEET_TITLE_CHAR_LENGTH = 75
 
 FILE_FORMAT_REGEX = /### Tweet\n(?<tweet_content>(.|\n)*)### Metadata\n(?<metadata>(.|\n)*)### Related\n(?<related>(.|\n)*)/
+LOG_PREFIX = "main.rb"
 
 # Options Parsing
 def parse_options
@@ -39,7 +42,7 @@ def usage
 """
 Fetches tweets from a user and outputs them to a file.
 
-Usage: ruby main.rb <username> [options]
+Usage: ruby commands/main.rb <username> [options]
 Options:
   -o --output-directory <file_path>: Path to directory to dump tweet files. Creates the directory if it doesn't exist. Defaults to #{DEFAULT_TWEET_DIRECTORY}
   --max-results <max_results>: Maximum number of tweets to retrieve. Defaults to #{DEFAULT_MAX_TWEET_RESULTS}
@@ -56,6 +59,8 @@ Environment:
 end
 
 def main
+  @logger = Logger.new(verbose: OPTIONS[:verbose], export_logs_path: OPTIONS[:export_logs_path])
+
   username = ARGV[0]
   if username.nil?
     log(usage, force_verbose: true)
@@ -268,10 +273,10 @@ def get_user_tweets(conn, user_id)
   log("Fetched #{results.body['meta']['result_count']} tweets")
 
   return [] if results.body['meta']['result_count'] == 0
-  
+
   tweets += results.body['data']
   pagination_token = results.body['meta']['next_token']
-  
+
   log("Pagination token is #{pagination_token}")
 
   while !pagination_token.nil? && tweets.length < OPTIONS[:max_results]
@@ -279,7 +284,7 @@ def get_user_tweets(conn, user_id)
     results = conn.get("users/#{user_id}/tweets", new_options)
 
     log("Fetched #{results.body['data'].length} tweets")
-    
+
     tweets += results.body['data']
     pagination_token = results.body['meta']['next_token']
 
@@ -289,13 +294,8 @@ def get_user_tweets(conn, user_id)
   tweets[0...OPTIONS[:max_results]]
 end
 
-# Logging
 def log(message, force_verbose: false)
-  return unless force_verbose || OPTIONS[:verbose]
-  puts message
-
-  return unless OPTIONS[:export_logs_path]
-  File.open(OPTIONS[:export_logs_path], "a") { |f| f.write("#{message}\n") }
+  @logger.log("#{LOG_PREFIX} - #{message}", force_verbose: force_verbose)
 end
 
 # Run the script
