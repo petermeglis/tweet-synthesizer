@@ -22,6 +22,7 @@ class ApiClient
   # @option max_results
   # @option max_tweet_results_per_request
   def get_user_tweets(user_id, options)
+    start_time = options[:start_time]
     after_id = options[:after_id]
     since_id = options[:since_id]
     max_results = options[:max_results]
@@ -34,6 +35,9 @@ class ApiClient
       "exclude": "retweets",
       "expansions": "referenced_tweets.id"
     }
+    request_options.merge!(
+      { "start_time": start_time}
+    ) if !start_time.nil?
     request_options.merge!(
       { "until_id": after_id}
     ) if !after_id.nil?
