@@ -109,8 +109,13 @@ def main
     tweet_id = tweet['id']
     tweet_content = tweet['text']
     tweet_created_at = tweet['created_at']
+    tweet_metrics_retweets = tweet['public_metrics']['retweet_count']
+    tweet_metrics_replies = tweet['public_metrics']['reply_count']
+    tweet_metrics_likes = tweet['public_metrics']['like_count']
+    tweet_metrics_quotes = tweet['public_metrics']['quote_count']
+    tweet_metrics_impressions = tweet['public_metrics']['impression_count']
 
-    output_tweet_to_file(user_username, tweet_id, tweet_created_at, tweet_content)  
+    output_tweet_to_file(user_username, tweet_id, tweet_created_at, tweet_content, tweet_metrics_retweets, tweet_metrics_replies, tweet_metrics_likes, tweet_metrics_quotes, tweet_metrics_impressions)  
   end
 
   log("main.rb Done!\n\n")
@@ -187,7 +192,7 @@ def condense_threads(tweets)
   base_tweets
 end
 
-def output_tweet_to_file(username, id, created_at, tweet_content)
+def output_tweet_to_file(username, id, created_at, tweet_content, tweet_metrics_retweets, tweet_metrics_replies, tweet_metrics_likes, tweet_metrics_quotes, tweet_metrics_impressions)
   file_title = "#{created_at} - #{username} - #{generate_tweet_title(tweet_content)}"
   file_path = "#{OPTIONS[:output_directory]}/#{file_title}.md"
 
@@ -205,7 +210,19 @@ def output_tweet_to_file(username, id, created_at, tweet_content)
   end
 
   body = "### Tweet\n#{tweet_content}"
-  footer = "### Metadata\nTweet ID: #{id}\nCreated At: #{created_at}\n\n### Related\n\n"
+  footer = <<~FOOTER
+    ### Metadata
+    Tweet ID: #{id}
+    Created At: #{created_at}
+    Impressions: #{tweet_metrics_impressions}
+    Likes: #{tweet_metrics_likes}
+    Replies: #{tweet_metrics_replies}
+    Retweets: #{tweet_metrics_retweets}
+    Quotes: #{tweet_metrics_quotes}
+    
+    ### Related
+    
+  FOOTER
 
   if !OPTIONS[:dry_run]
     if OPTIONS[:overwrite_only_tweet_content] && File.exist?(file_path)

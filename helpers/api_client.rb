@@ -30,7 +30,7 @@ class ApiClient
 
     tweets = []
     request_options = {
-      "tweet.fields": "created_at,in_reply_to_user_id",
+      "tweet.fields": "created_at,in_reply_to_user_id,public_metrics",
       "max_results": max_tweet_results_per_request,
       "exclude": "retweets",
       "expansions": "referenced_tweets.id"
