@@ -185,7 +185,7 @@ def condense_threads(tweets)
       end
 
       log("Combining base tweet #{base_tweet['id']} with text from reply tweet #{current_tweet_in_thread['id']}.")
-      base_tweet['text'] += "\n\n#{current_tweet_in_thread['text']}"
+      base_tweet['text'] += "\n\n---\n\nReplied At: #{current_tweet_in_thread['created_at']}\n\n#{current_tweet_in_thread['text']}"
 
       reply_tweet_id = thread_cache[current_tweet_in_thread['id']]
     end
