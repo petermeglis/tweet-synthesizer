@@ -106,16 +106,18 @@ def main
     # Skip tweets that are replies to other users
     next if !tweet['in_reply_to_user_id'].nil? && tweet['in_reply_to_user_id'] != user_id
 
-    tweet_id = tweet['id']
     tweet_content = tweet['text']
-    tweet_created_at = tweet['created_at']
-    tweet_metrics_retweets = tweet['public_metrics']['retweet_count']
-    tweet_metrics_replies = tweet['public_metrics']['reply_count']
-    tweet_metrics_likes = tweet['public_metrics']['like_count']
-    tweet_metrics_quotes = tweet['public_metrics']['quote_count']
-    tweet_metrics_impressions = tweet['public_metrics']['impression_count']
+    metadata = {
+      id: tweet['id'],
+      created_at: tweet['created_at'],
+      metrics_retweets: tweet['public_metrics']['retweet_count'],
+      metrics_replies: tweet['public_metrics']['reply_count'],
+      metrics_likes: tweet['public_metrics']['like_count'],
+      metrics_quotes: tweet['public_metrics']['quote_count'],
+      metrics_impressions: tweet['public_metrics']['impression_count']
+    }
 
-    output_tweet_to_file(user_username, tweet_id, tweet_created_at, tweet_content, tweet_metrics_retweets, tweet_metrics_replies, tweet_metrics_likes, tweet_metrics_quotes, tweet_metrics_impressions)  
+    output_tweet_to_file(user_username, tweet_content, metadata)
   end
 
   log("main.rb Done!\n\n")
@@ -192,8 +194,8 @@ def condense_threads(tweets)
   base_tweets
 end
 
-def output_tweet_to_file(username, id, created_at, tweet_content, tweet_metrics_retweets, tweet_metrics_replies, tweet_metrics_likes, tweet_metrics_quotes, tweet_metrics_impressions)
-  file_title = "#{created_at} - #{username} - #{generate_tweet_title(tweet_content)}"
+def output_tweet_to_file(username, tweet_content, metadata)
+  file_title = "#{metadata[:created_at]} - #{username} - #{generate_tweet_title(tweet_content)}"
   file_path = "#{OPTIONS[:output_directory]}/#{file_title}.md"
 
   if !should_overwrite? && File.exist?(file_path)
@@ -212,13 +214,13 @@ def output_tweet_to_file(username, id, created_at, tweet_content, tweet_metrics_
   body = "### Tweet\n#{tweet_content}"
   footer = <<~FOOTER
     ### Metadata
-    Tweet ID: #{id}
-    Created At: #{created_at}
-    Impressions: #{tweet_metrics_impressions}
-    Likes: #{tweet_metrics_likes}
-    Replies: #{tweet_metrics_replies}
-    Retweets: #{tweet_metrics_retweets}
-    Quotes: #{tweet_metrics_quotes}
+    Tweet ID: #{metadata[:id]}
+    Created At: #{metadata[:created_at]}
+    Impressions: #{metadata[:metrics_impressions]}
+    Likes: #{metadata[:metrics_likes]}
+    Replies: #{metadata[:metrics_replies]}
+    Retweets: #{metadata[:metrics_retweets]}
+    Quotes: #{metadata[:metrics_quotes]}
     
     ### Related
     
